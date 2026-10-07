@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101114">
+  <title>Task Ledger — Daily Focus</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #101114;
+      --panel: #181a1f;
+      --panel-raised: #202228;
+      --line: #30323a;
+      --text: #f3f0e9;
+      --muted: #898b95;
+      --accent: #c4f06a;
+      --accent-ink: #17200c;
+      --danger: #ff7777;
+      --shadow: 0 24px 70px rgb(0 0 0 / 34%);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 56px 20px;
+      background:
+        radial-gradient(ellipse at 50% -20%, rgb(196 240 106 / 9%), transparent 55%),
+        var(--page);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      width: min(100%, 660px);
+      margin: 0 auto;
+      padding: 34px;
+      border: 1px solid rgb(255 255 255 / 7%);
+      border-radius: 28px;
+      background: rgb(24 26 31 / 94%);
+      box-shadow: var(--shadow);
+    }
+
+    .topline, .heading-row, .entry-row, .toolbar, .task-row, .footer-row {
+      display: flex;
+      align-items: center;
+    }
+
+    .topline { justify-content: space-between; margin-bottom: 30px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.72rem; font-weight: 750; letter-spacing: 0.15em; text-transform: uppercase; }
+    .brand-mark { display: grid; width: 27px; height: 27px; place-items: center; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font-size: 0.9rem; }
+    .date { color: var(--muted); font-size: 0.78rem; }
+    .heading-row { justify-content: space-between; gap: 16px; margin-bottom: 25px; }
+    h1 { margin: 0; font-size: clamp(2rem, 7vw, 2.8rem); font-weight: 760; letter-spacing: -0.065em; line-height: 1; }
+    .subtitle { margin: 10px 0 0; color: var(--muted); font-size: 0.9rem; }
+    .tally { flex: 0 0 auto; padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+    .tally strong { color: var(--accent); font-weight: 750; }
+
+    .entry-row { gap: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 15px; background: #121317; transition: border-color 160ms ease, box-shadow 160ms ease; }
+    .entry-row:focus-within { border-color: rgb(196 240 106 / 60%); box-shadow: 0 0 0 3px rgb(196 240 106 / 9%); }
+    #task-input { width: 100%; min-width: 0; padding: 9px 10px; border: 0; outline: 0; background: transparent; color: var(--text); }
+    #task-input::placeholder { color: #73757e; }
+    .add-button { flex: 0 0 auto; padding: 11px 17px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-size: 0.84rem; font-weight: 800; cursor: pointer; transition: transform 150ms ease, filter 150ms ease; }
+    .add-button:hover { filter: brightness(1.07); transform: translateY(-1px); }
+    .add-button:active { transform: scale(0.97); }
+
+    .toolbar { justify-content: space-between; gap: 14px; margin: 25px 0 12px; }
+    .filters { display: flex; gap: 5px; }
+    .filter-button, .clear-button { padding: 8px 11px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-size: 0.78rem; cursor: pointer; transition: color 150ms ease, background 150ms ease; }
+    .filter-button:hover, .clear-button:hover:not(:disabled) { color: var(--text); }
+    .filter-button[aria-pressed="true"] { background: var(--panel-raised); color: var(--text); }
+    .clear-button { padding-right: 0; white-space: nowrap; }
+    .clear-button:disabled { opacity: 0.42; cursor: not-allowed; }
+
+    #ledger { display: grid; gap: 9px; min-height: 80px; margin: 0; padding: 0; list-style: none; }
+    .task-row { min-height: 62px; gap: 13px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 13px; background: var(--panel); animation: row-in 260ms ease both; }
+    .stamp { display: grid; flex: 0 0 auto; width: 29px; height: 29px; place-items: center; border: 1.5px solid #52545d; border-radius: 50%; background: transparent; color: transparent; cursor: pointer; transition: background 180ms ease, border-color 180ms ease, transform 180ms ease; }
+    .stamp:hover { border-color: var(--accent); transform: scale(1.06); }
+    .task-row.done .stamp { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); animation: stamp-in 220ms ease; }
+    .stamp svg { width: 15px; height: 15px; }
+    .task-text { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #e9e7e2; font-size: 0.92rem; line-height: 1.5; }
+    .task-row.done .task-text { color: #777982; text-decoration: line-through; text-decoration-color: #777982; }
+    .delete-button { display: grid; flex: 0 0 auto; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 9px; background: transparent; color: var(--muted); opacity: 0; cursor: pointer; transition: opacity 150ms ease, color 150ms ease, background 150ms ease; }
+    .task-row:hover .delete-button, .task-row:focus-within .delete-button { opacity: 1; }
+    .delete-button:hover { background: rgb(255 119 119 / 12%); color: var(--danger); }
+    .delete-button svg { width: 17px; height: 17px; }
+    .empty-state { display: grid; min-height: 120px; place-content: center; gap: 7px; color: var(--muted); text-align: center; }
+    .empty-state strong { color: #c4c5ca; font-size: 0.92rem; font-weight: 650; }
+    .empty-state span { font-size: 0.8rem; }
+    .footer-row { justify-content: space-between; margin-top: 22px; padding-top: 17px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.73rem; }
+    .storage-note { display: flex; align-items: center; gap: 7px; }
+    .storage-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    @keyframes row-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes stamp-in { 50% { transform: scale(1.17); } }
+    @media (max-width: 520px) {
+      body { padding: 20px 12px; }
+      .app { padding: 23px 17px; border-radius: 22px; }
+      .topline { margin-bottom: 25px; }
+      .heading-row { align-items: flex-start; flex-direction: column; gap: 12px; }
+      .toolbar { align-items: flex-start; flex-direction: column; gap: 5px; }
+      .clear-button { padding: 5px 0; }
+      .delete-button { opacity: 1; }
+      .footer-row { align-items: flex-start; flex-direction: column; gap: 9px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topline">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✓</span> Daily focus</div>
+      <time class="date" datetime="2026-08-13">13 Aug 2026</time>
+    </div>
+
+    <header class="heading-row">
+      <div>
+        <h1>Task ledger</h1>
+        <p class="subtitle">A little progress, one task at a time.</p>
+      </div>
+      <div class="tally" aria-live="polite"><strong id="remaining-count">0</strong> left <span aria-hidden="true">·</span> <span id="total-count">0</span> total</div>
+    </header>
+
+    <form class="entry-row" id="task-form">
+      <input id="task-input" type="text" maxlength="140" placeholder="What needs doing?" aria-label="New task" autocomplete="off" required>
+      <button class="add-button" type="submit">ADD <span aria-hidden="true">＋</span></button>
+    </form>
+
+    <section aria-label="Task controls">
+      <div class="toolbar">
+        <div class="filters" role="group" aria-label="Filter tasks">
+          <button class="filter-button" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="filter-button" type="button" data-filter="active" aria-pressed="false">Active</button>
+          <button class="filter-button" type="button" data-filter="done" aria-pressed="false">Done</button>
+        </div>
+        <button class="clear-button" id="clear-completed" type="button" disabled>Clear completed</button>
+      </div>
+      <ul id="ledger" aria-label="Your tasks" aria-live="polite"></ul>
+    </section>
+
+    <footer class="footer-row">
+      <span id="task-summary">Make room for what matters.</span>
+      <span class="storage-note"><span class="storage-dot" aria-hidden="true"></span>Saved on this device</span>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'task-ledger-v1';
+      const form = document.querySelector('#task-form');
+      const input = document.querySelector('#task-input');
+      const ledger = document.querySelector('#ledger');
+      const remainingCount = document.querySelector('#remaining-count');
+      const totalCount = document.querySelector('#total-count');
+      const clearButton = document.querySelector('#clear-completed');
+      const summary = document.querySelector('#task-summary');
+      const filterButtons = [...document.querySelectorAll('[data-filter]')];
+      let currentFilter = 'all';
+      let tasks = loadTasks();
+
+      function loadTasks() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (!saved) return [];
+          const parsed = JSON.parse(saved);
+          if (!Array.isArray(parsed)) return [];
+          return parsed.filter(task => task && typeof task.id === 'string' && typeof task.text === 'string' && typeof task.done === 'boolean')
+            .map(task => ({ id: task.id, text: task.text.slice(0, 140), done: task.done }));
+        } catch (error) {
+          console.warn('Tasks could not be loaded from localStorage.', error);
+          return [];
+        }
+      }
+
+      function saveTasks() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        } catch (error) {
+          console.warn('Tasks could not be saved to localStorage.', error);
+        }
+      }
+
+      function addTask(text) {
+        const cleanText = text.trim();
+        if (!cleanText) return;
+        const id = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        tasks.unshift({ id, text: cleanText, done: false });
+        render();
+      }
+
+      function toggleTask(id) {
+        tasks = tasks.map(task => task.id === id ? { ...task, done: !task.done } : task);
+        render();
+      }
+
+      function removeTask(id) {
+        tasks = tasks.filter(task => task.id !== id);
+        render();
+      }
+
+      function removeCompleted() {
+        tasks = tasks.filter(task => !task.done);
+        render();
+      }
+
+      function render() {
+        const remaining = tasks.filter(task => !task.done).length;
+        const completed = tasks.length - remaining;
+        const visibleTasks = tasks.filter(task => {
+          if (currentFilter === 'active') return !task.done;
+          if (currentFilter === 'done') return task.done;
+          return true;
+        });
+
+        remainingCount.textContent = remaining;
+        totalCount.textContent = tasks.length;
+        clearButton.disabled = completed === 0;
+        summary.textContent = tasks.length === 0
+          ? 'Make room for what matters.'
+          : remaining === 0 ? 'Everything is checked off. Nice work!' : `${remaining} task${remaining === 1 ? '' : 's'} still on your list.`;
+
+        ledger.replaceChildren();
+        if (visibleTasks.length === 0) {
+          const empty = document.createElement('li');
+          empty.className = 'empty-state';
+          const title = document.createElement('strong');
+          const detail = document.createElement('span');
+          if (tasks.length === 0) {
+            title.textContent = 'Your ledger is clear';
+            detail.textContent = 'Add a task above to get started.';
+          } else if (currentFilter === 'active') {
+            title.textContent = 'No active tasks';
+            detail.textContent = 'You are all caught up on this list.';
+          } else {
+            title.textContent = 'Nothing completed yet';
+            detail.textContent = 'Finished tasks will appear here.';
+          }
+          empty.append(title, detail);
+          ledger.append(empty);
+        } else {
+          for (const task of visibleTasks) {
+            const row = document.createElement('li');
+            row.className = `task-row${task.done ? ' done' : ''}`;
+            row.dataset.id = task.id;
+
+            const stamp = document.createElement('button');
+            stamp.className = 'stamp';
+            stamp.type = 'button';
+            stamp.dataset.action = 'toggle';
+            stamp.setAttribute('aria-label', task.done ? `Mark ${task.text} as active` : `Mark ${task.text} as done`);
+            stamp.setAttribute('aria-pressed', String(task.done));
+            stamp.innerHTML = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+            const text = document.createElement('span');
+            text.className = 'task-text';
+            text.textContent = task.text;
+
+            const remove = document.createElement('button');
+            remove.className = 'delete-button';
+            remove.type = 'button';
+            remove.dataset.action = 'delete';
+            remove.setAttribute('aria-label', `Delete ${task.text}`);
+            remove.innerHTML = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 6h12m-10 0 .7 10h6.6L14 6m-6-2h4m-3 5v4m2-4v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+            row.append(stamp, text, remove);
+            ledger.append(row);
+          }
+        }
+        saveTasks();
+      }
+
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        addTask(input.value);
+        input.value = '';
+        input.focus();
+      });
+
+      ledger.addEventListener('click', event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const row = button.closest('.task-row');
+        if (button.dataset.action === 'toggle') toggleTask(row.dataset.id);
+        if (button.dataset.action === 'delete') removeTask(row.dataset.id);
+      });
+
+      filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          currentFilter = button.dataset.filter;
+          filterButtons.forEach(filter => filter.setAttribute('aria-pressed', String(filter === button)));
+          render();
+        });
+      });
+
+      clearButton.addEventListener('click', removeCompleted);
+      render();
+    })();
+  </script>
+</body>
+</html>
